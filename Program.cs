@@ -9,7 +9,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Printing;
@@ -29,16 +28,21 @@ namespace PrintingConsoleService
         public static void Main(string[] args)
         {
             // Создание фонового потока
-            BackgroundWorker backgroundWorker1 = new BackgroundWorker();
-            backgroundWorker1.DoWork += BackgroundWorker1_DoWork;
-            backgroundWorker1.RunWorkerAsync();
+            BackgroundUpdaterAsync();
 
             // Выход при вводе с клавиатуры
             Console.ReadKey();
         }
 
         // Метод фонового потока
-        private static void BackgroundWorker1_DoWork(object sender, DoWorkEventArgs e)
+        private static async void BackgroundUpdaterAsync()
+        {
+            // Запускает асинхронно BackgroundUpdater
+            await Task.Run(() => BackgroundUpdater());
+        }
+
+        // В бесконечном цикле обновление данный с сервера печати
+        private static void BackgroundUpdater()
         {
             // Сервер печати
             LocalPrintServer server = new LocalPrintServer();
