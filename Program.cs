@@ -13,6 +13,8 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Printing;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace PrintingConsoleService
 {
@@ -20,14 +22,12 @@ namespace PrintingConsoleService
     {
         // Интервал мониторинга
         private const int SLEEP_TIME = 1;
-        private static Dictionary<int, Document> dictOfDocs;
+
+        // Словарь: Ключ - JobIdentifier, Значение - объект типа Document(имя, имя принтера, кол-во страниц, кол-во копий)
+        private static Dictionary<int, Document> dictOfDocs = new Dictionary<int, Document>();
 
         public static void Main(string[] args)
         {
-
-            // Словарь: Ключ - JobIdentifier, Значение - объект типа Document(имя, имя принтера, кол-во страниц, кол-во копий)
-            dictOfDocs = new Dictionary<int, Document>();
-
             // Создание фонового потока
             BackgroundWorker backgroundWorker1 = new BackgroundWorker();
             backgroundWorker1.DoWork += BackgroundWorker1_DoWork;
@@ -40,11 +40,13 @@ namespace PrintingConsoleService
         // Метод фонового потока
         private static void BackgroundWorker1_DoWork(object sender, DoWorkEventArgs e)
         {
+            // Сервер печати
             LocalPrintServer server = new LocalPrintServer();
 
-            // Вечный цикл ¯\_(ツ)_/¯        
-            while(true)
+            // Бесконечный цикл ¯\_(ツ)_/¯        
+            while (true)
             {
+                // Обновление данных с сервера печати
                 server.Refresh();
 
                 // Директория Spool, содержащая очереди на печать
@@ -54,22 +56,23 @@ namespace PrintingConsoleService
                 if (initDirs.Length > 0)
                 {
                     // Обновить и отобразить текущую информацию о печати
-                    UpdateData(server);                
-                } 
+                    UpdateDataFromServer(server);
+                }
                 else
                 {
                     // Сброс словаря dictOfDocs
-                    dictOfDocs.Clear();                  
+                    dictOfDocs.Clear();
                 }
 
                 // Доброй ночи
-                System.Threading.Thread.Sleep(SLEEP_TIME);
+                Thread.Sleep(SLEEP_TIME);
             }
         }
 
-        //
-        private static void UpdateData(LocalPrintServer server)
+        // Получение данных с сервера печати
+        private static void UpdateDataFromServer(LocalPrintServer server)
         {
+            // Обновление данных с сервера печати
             server.Refresh();
 
             // Коллекция принтеров
@@ -84,28 +87,28 @@ namespace PrintingConsoleService
                 if (printQueue.NumberOfJobs != 0)
                 {
                     // Коллекция задач печати текущего принтера
-                    var jobCollection = printQueue.GetPrintJobInfoCollection();                             
+                    var jobCollection = printQueue.GetPrintJobInfoCollection();
 
                     // Цикл по всем документам принтера
-                    foreach(var job in jobCollection)
+                    foreach (var job in jobCollection)
                     {
                         // Если в словаре dictOfDocs уже содержится Id текущей задачи
                         if (dictOfDocs.ContainsKey(job.JobIdentifier))
                         {
                             // Обновляем число страниц (от числа уже напечатанных)
                             dictOfDocs[job.JobIdentifier].NumberOfPages = job.NumberOfPagesPrinted;
-                        } 
+                        }
                         else
                         {
                             // Добавляем в словарь новый элемент. Ключ - Id задачи, Значение - Объект типа Document
                             dictOfDocs.Add(job.JobIdentifier, new Document(job.Name, printQueue.Name, job.NumberOfPagesPrinted, (int)printQueue.DefaultPrintTicket.CopyCount));
-                        }                     
+                        }
                     }
-                    
+
                     // Обновление информации в командной строке
                     PrintData();
-                }        
-            }           
+                }
+            }
         }
 
         // Обновление информации в командной строке
@@ -130,7 +133,7 @@ namespace PrintingConsoleService
 
         private int pages;
         public int NumberOfPages
-        { 
+        {
             get { return pages; }
 
             // Сеттер свойства NumberOfPages. Меняется только если входное значение больше.
